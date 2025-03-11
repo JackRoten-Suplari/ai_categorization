@@ -1,5 +1,5 @@
 # ai_categorization
-Test grounds for AI and ML categorization.
+Testing grounds for AI and ML categorization.
 
 Suplari's goals to categorize transactions and complete the spend cube includes a few cases from simpleset to more complex:
 
