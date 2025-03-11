@@ -1,7 +1,7 @@
 # ai_categorization
 Test grounds for AI and ML categorization.
 
-Suplari's goals to be categorize transactions and complete the spend cube includes a few cases from simpleset to more complex:
+Suplari's goals to categorize transactions and complete the spend cube includes a few cases from simpleset to more complex:
 
 1. Categorizing transactions based on a set of given rules and hierachy
 2.  Categorizing transactions based on features such as description, account, cost center, business unit and hierachy
