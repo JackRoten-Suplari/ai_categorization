@@ -37,7 +37,21 @@ class HierarchicalBertClassifier(nn.Module):
         return logits
 
 class TransactionDataset(Dataset):
-    def __init__(self, texts, labels, tokenizer, max_length=128):
+    def __init__(self, transactions_df, indices, labels, tokenizer, fields_to_use=None, max_length=256):
+        if fields_to_use is None:
+            fields_to_use = ['description', 'normalized vendor', 'account_name', 'cost center name']
+        
+        # Combine multiple fields into a single text
+        texts = []
+        for idx in indices:
+            text_parts = []
+            for field in fields_to_use:
+                if field in transactions_df.columns:
+                    value = str(transactions_df[field].iloc[idx])
+                    if pd.notna(value) and value != 'nan':
+                        text_parts.append(f"{field}: {value}")
+            texts.append(" | ".join(text_parts))
+        
         self.encodings = tokenizer(texts, truncation=True, padding=True, max_length=max_length)
         self.labels = labels
     
@@ -51,13 +65,31 @@ class TransactionDataset(Dataset):
         item['labels'] = [torch.tensor(level_labels[idx]) for level_labels in self.labels]
         return item
 
-def load_and_preprocess_data():
+def load_and_preprocess_data(fields_to_use=None):
+    if fields_to_use is None:
+        fields_to_use = [
+            'description',
+            'normalized vendor',
+            'account_name',
+            'cost center name',
+            'amount',
+            'payment method'
+        ]
+    
     # Load categories
     categories_df = pd.read_csv("data/suplari_coopervision_Categories.csv")
     
     # Load transactions with low_memory=False to handle mixed types
     transactions_df = pd.read_csv("data/coopervision_Suplari_Transactions_sample.csv", low_memory=False)
-    transactions_df['description'] = transactions_df['description'].astype(str)
+    
+    # Convert all specified fields to string and clean them
+    for field in fields_to_use:
+        if field in transactions_df.columns:
+            transactions_df[field] = transactions_df[field].astype(str)
+            # Clean the field values
+            transactions_df[field] = transactions_df[field].apply(lambda x: x.strip() if isinstance(x, str) else x)
+            transactions_df[field] = transactions_df[field].replace('nan', '')
+    
     # Create category mappings for each level
     category_mappings = []
     label_encoders = []
@@ -179,14 +211,25 @@ def predict_categories(model, tokenizer, text, label_encoders, device):
     
     return predictions
 
-def predict_batch(model, tokenizer, texts, label_encoders, device, batch_size=32):
+def predict_batch(model, tokenizer, transactions_df, fields_to_use, label_encoders, device, batch_size=32):
     model.eval()
     predictions = [[] for _ in range(len(label_encoders))]
     
+    # Create batches of combined text
+    all_texts = []
+    for _, row in transactions_df.iterrows():
+        text_parts = []
+        for field in fields_to_use:
+            if field in transactions_df.columns:
+                value = str(row[field])
+                if pd.notna(value) and value != 'nan':
+                    text_parts.append(f"{field}: {value}")
+        all_texts.append(" | ".join(text_parts))
+    
     # Process in batches
-    for i in range(0, len(texts), batch_size):
-        batch_texts = texts[i:i + batch_size]
-        inputs = tokenizer(batch_texts, truncation=True, padding=True, max_length=128, return_tensors='pt')
+    for i in range(0, len(all_texts), batch_size):
+        batch_texts = all_texts[i:i + batch_size]
+        inputs = tokenizer(batch_texts, truncation=True, padding=True, max_length=256, return_tensors='pt')
         input_ids = inputs['input_ids'].to(device)
         attention_mask = inputs['attention_mask'].to(device)
         
@@ -195,9 +238,18 @@ def predict_batch(model, tokenizer, texts, label_encoders, device, batch_size=32
             
             # Get predictions for each level
             for level, (level_logits, encoder) in enumerate(zip(logits, label_encoders)):
-                pred_idx = level_logits.argmax(dim=1)
-                pred_categories = [encoder[idx.item()] for idx in pred_idx]
-                predictions[level].extend(pred_categories)
+                if level_logits.size(1) == 0:  # Skip empty categories
+                    predictions[level].extend([''] * len(batch_texts))
+                    continue
+                    
+                # Handle both single and batch predictions
+                if len(batch_texts) == 1:
+                    pred_idx = level_logits.squeeze(0).argmax().item()
+                    predictions[level].append(encoder[pred_idx])
+                else:
+                    pred_indices = level_logits.argmax(dim=1)
+                    pred_categories = [encoder[idx.item()] for idx in pred_indices]
+                    predictions[level].extend(pred_categories)
     
     return predictions
 
@@ -214,67 +266,97 @@ def save_predictions_to_csv(transactions_df, predictions, output_file='predictio
     print(f"\nPredictions saved to {output_file}")
 
 def main():
+    # Define fields to use
+    fields_to_use = [
+        'file_name',
+        'description',
+        'normalized vendor',
+        'account name',
+        'cost center name',
+        'amount',
+        'payment method',
+        'posting_type'
+    ]
+    
     # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}")
     
     # Load and preprocess data
-    transactions_df, category_mappings, label_encoders = load_and_preprocess_data()
+    print("Loading and preprocessing data...")
+    print(f"Using fields: {', '.join(fields_to_use)}")
+    transactions_df, category_mappings, label_encoders = load_and_preprocess_data(fields_to_use)
+    
+    # Print some data statistics
+    print(f"\nDataset statistics:")
+    print(f"Number of transactions: {len(transactions_df)}")
+    print("Number of categories per level:")
+    for level, mapping in enumerate(category_mappings, 1):
+        print(f"Level {level}: {len(mapping)} categories")
     
     # Prepare labels
+    print("\nPreparing labels...")
     hierarchical_labels = prepare_hierarchical_labels(transactions_df, category_mappings)
     
     # Split data
-    train_texts, val_texts, train_labels, val_labels = [], [], [], []
-    for level_labels in hierarchical_labels:
-        train_idx, val_idx = train_test_split(
-            range(len(level_labels)),
-            test_size=0.2,
-            random_state=42,
-            stratify=[l if l != -1 else 0 for l in level_labels]
-        )
-        train_labels.append([level_labels[i] for i in train_idx])
-        val_labels.append([level_labels[i] for i in val_idx])
+    print("\nSplitting data into train and validation sets...")
+    train_idx, val_idx = train_test_split(
+        range(len(transactions_df)),
+        test_size=0.2,
+        random_state=42,
+        stratify=[l if l != -1 else 0 for l in hierarchical_labels[0]]  # Use first level for stratification
+    )
     
-    # Use lowercase 'description' column name
-    train_texts = [transactions_df['description'].iloc[i] for i in train_idx]
-    val_texts = [transactions_df['description'].iloc[i] for i in val_idx]
+    train_labels = [[labels[i] for i in train_idx] for labels in hierarchical_labels]
+    val_labels = [[labels[i] for i in val_idx] for labels in hierarchical_labels]
+    
+    print(f"Training set size: {len(train_idx)}")
+    print(f"Validation set size: {len(val_idx)}")
     
     # Initialize tokenizer and create datasets
+    print("\nInitializing BERT tokenizer and creating datasets...")
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    train_dataset = TransactionDataset(train_texts, train_labels, tokenizer)
-    val_dataset = TransactionDataset(val_texts, val_labels, tokenizer)
+    train_dataset = TransactionDataset(transactions_df, train_idx, train_labels, tokenizer, fields_to_use)
+    val_dataset = TransactionDataset(transactions_df, val_idx, val_labels, tokenizer, fields_to_use)
     
     # Create data loaders
     train_dataloader = DataLoader(train_dataset, batch_size=16, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=16)
     
     # Initialize and train model
+    print("\nInitializing model...")
     num_categories_per_level = [len(mapping) for mapping in category_mappings]
     model = HierarchicalBertClassifier(num_categories_per_level).to(device)
     
+    print("\nTraining model...")
     train_model(model, train_dataloader, val_dataloader, device, category_mappings)
     
     # Save the model
+    print("\nSaving model...")
     torch.save({
         'model_state_dict': model.state_dict(),
         'category_mappings': category_mappings,
-        'label_encoders': label_encoders
+        'label_encoders': label_encoders,
+        'fields_to_use': fields_to_use
     }, 'coopervision_bert_model.pt')
     
     # Generate predictions for all transactions
     print("\nGenerating predictions for all transactions...")
-    all_descriptions = transactions_df['description'].tolist()
-    all_predictions = predict_batch(model, tokenizer, all_descriptions, label_encoders, device)
+    all_predictions = predict_batch(model, tokenizer, transactions_df, fields_to_use, label_encoders, device)
     
     # Save predictions to CSV
     save_predictions_to_csv(transactions_df, all_predictions, 'coopervision_predictions.csv')
     
     # Show an example prediction
-    example_idx = 0  # Show first transaction as example
     print("\nExample Prediction:")
-    print(f"Text: {all_descriptions[example_idx]}")
+    print("Input fields:")
+    for field in fields_to_use:
+        if field in transactions_df.columns:
+            value = transactions_df[field].iloc[0]
+            print(f"{field}: {value}")
+    print("\nPredicted categories:")
     for level, predictions in enumerate(all_predictions, 1):
-        print(f"Level {level}: {predictions[example_idx]}")
+        print(f"Level {level}: {predictions[0]}")
 
 if __name__ == "__main__":
     main() 
