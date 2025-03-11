@@ -5,3 +5,4 @@ venv/
 *.pkl
 *.pickle
 *.DS_Store
+/data/
