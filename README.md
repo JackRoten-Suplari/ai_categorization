@@ -1,4 +1,5 @@
 # ai_categorization
+Test grounds for AI and ML categorization.
 
 Suplari's goals to be categorize transactions and complete the spend cube includes a few cases from simpleset to more complex:
 
@@ -7,11 +8,6 @@ Suplari's goals to be categorize transactions and complete the spend cube includ
 3.  Categorizing transactions based on features such as description, account, cost center, business unit no provided hierachy
 
 Categorization based on features requires as many dimensions as possible. It is yet to be determined what the most optimal number of features is and how best they can be used. Below is an extensive list of potential feaures, of which, we can look to a LLM to aid in understanding our customer's data.
-
-
-Test grounds for AI and ML categorization
-
-Currently in progress as a testing site to try a number of categorization techniques.
 
 
 Features of our customers data that can aid in categorizating transactions:
