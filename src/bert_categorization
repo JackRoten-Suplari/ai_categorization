@@ -3,7 +3,7 @@ BERT Categorization
 
 This script uses BERT to categorize financial transactions based on their descriptions.
 
-Not all Transactions come with descriptsions
+Not all Transactions come with descriptions
 """
 
 # pip install torch transformers datasets scikit-learn pandas tqdm

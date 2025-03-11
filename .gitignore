@@ -1,0 +1,6 @@
+venv/
+*.json
+*.pth
+*.pt
+*.pkl
+*.pickle

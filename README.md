@@ -13,6 +13,12 @@ Test grounds for AI and ML categorization
 
 Currently in progress as a testing site to try a number of categorization techniques.
 
+To use script:
+
+1. First install the required dependencies:
+```bash
+pip install -r requirements.txt
+```
 
 Features of our customers data that can aid in categorizating transactions:
 
