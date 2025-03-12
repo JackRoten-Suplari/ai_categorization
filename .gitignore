@@ -6,3 +6,7 @@ venv/
 *.pickle
 *.DS_Store
 /data/
+.env
+*.csv
+*.pyc
+.cursor/rules
