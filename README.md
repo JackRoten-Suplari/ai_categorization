@@ -30,11 +30,11 @@ poetry install
 ```
 
 3. Set up your Anthropic API key:
-   - Create a `.env` file in the project root:
-   ```bash
-   echo "ANTHROPIC_API_KEY=your-api-key-here" > .env
-   ```
-   - Replace `your-api-key-here` with your actual Anthropic API key
+Create a `.env` file in the project root:
+```bash
+echo "ANTHROPIC_API_KEY=your-api-key-here" > .env
+```
+- Replace `your-api-key-here` with your actual Anthropic API key
 
 ## Usage
 
