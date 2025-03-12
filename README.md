@@ -96,6 +96,3 @@ poetry run isort src/
 - The `.env` file is included in `.gitignore`
 - Always use environment variables for sensitive credentials
 
-## License
-
-[Add your license information here]
