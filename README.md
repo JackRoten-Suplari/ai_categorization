@@ -16,6 +16,8 @@ This project uses Anthropic's Claude AI to automatically categorize spend accoun
 - Poetry (Python package manager)
 - Anthropic API key
 
+For testing data locally download data from google drive in CS/_test_data and place in data/ dir
+
 ## Installation
 
 1. Clone the repository:
@@ -38,6 +40,7 @@ echo "ANTHROPIC_API_KEY=your-api-key-here" > .env
 
 ## Usage
 
+To test account categorization method:
 1. Activate the Poetry virtual environment:
 ```bash
 poetry shell
