@@ -1,77 +1,98 @@
-# ai_categorization
-Testing grounds for AI and ML categorization.
+# AI Spend Categorization
 
-1. First install the required dependencies:
+This project uses Anthropic's Claude AI to automatically categorize spend accounts into direct, indirect, and unaddressable categories.
+
+## Features
+
+- Extracts unique account names from transaction data
+- Uses Anthropic's Claude AI to categorize accounts
+- Processes accounts in batches for efficiency
+- Includes retry logic and error handling
+- Saves results to CSV for easy analysis
+
+## Prerequisites
+
+- Python 3.8 or higher
+- Poetry (Python package manager)
+- Anthropic API key
+
+## Installation
+
+1. Clone the repository:
 ```bash
-pip install -r requirements.txt
-
+git clone https://github.com/suplari/ai_categorization.git
+cd ai_categorization
 ```
 
-Suplari's goals to categorize transactions and complete the spend cube includes a few cases from simpleset to more complex:
+2. Install dependencies using Poetry:
+```bash
+poetry install
+```
 
-1. Categorizing transactions based on a set of given rules and hierachy
-2.  Categorizing transactions based on features such as description, account, cost center, business unit and hierachy
-3.  Categorizing transactions based on features such as description, account, cost center, business unit no provided hierachy
+3. Set up your Anthropic API key:
+   - Create a `.env` file in the project root:
+   ```bash
+   echo "ANTHROPIC_API_KEY=your-api-key-here" > .env
+   ```
+   - Replace `your-api-key-here` with your actual Anthropic API key
 
-Categorization based on features requires as many dimensions as possible. It is yet to be determined what the most optimal number of features is and how best they can be used. Below is an extensive list of potential feaures, of which, we can look to a LLM to aid in understanding our customer's data.
+## Usage
 
+1. Activate the Poetry virtual environment:
+```bash
+poetry shell
+```
 
+2. Run the categorization script:
+```bash
+poetry run categorize
+```
 
-Features of our customers data that can aid in categorizating transactions:
+Or alternatively:
+```bash
+python src/anthropic_utils_dev.py
+```
 
-1. Transaction Metadata (General Identifiers)
-Transaction ID – Unique identifier for each transaction.
-Timestamp – Date and time of the transaction (used for trend analysis).
-Location – Geographical coordinates or address where the transaction occurred.
-Merchant Name / Category – Type of business where the transaction happened.
-Channel Used – Online, mobile, POS (Point of Sale), ATM, etc.
+The script will:
+1. Load transaction data from `data/coopervision_Suplari_Transactions_sample.csv`
+2. Extract unique account names
+3. Use Claude to categorize each account
+4. Save results to `account_categories.csv`
 
-2. Financial Features
-Transaction Amount – Amount spent in the transaction.
-Transaction Type – Credit, debit, refund, payment, withdrawal.
-Currency Type – USD, EUR, GBP, etc.
-Exchange Rate (if applicable) – Useful in cross-border transactions.
-Payment Method – Credit card, debit card, PayPal, wire transfer, cryptocurrency, etc.
-Recurring vs. One-Time – Subscription payments vs. one-time purchases.
-Balance Before & After – Useful for tracking changes in financial accounts.
+## Input Data Format
 
-3. Customer & Behavioral Features
-Customer ID – Unique identifier for the customer.
-Account Type – Individual, business, premium, basic.
-Customer Segmentation – High-value customers, regular users, occasional users.
-Historical Transaction Frequency – Daily, weekly, monthly transactions.
-Average Transaction Value – Average amount spent per transaction.
-Transaction Patterns – Predictable spending habits vs. anomalies.
-Time of Day & Day of Week – Morning, evening, weekend vs. weekday transactions.
+The input CSV file should contain at least an "account name" column. Place your data file at:
+```
+data/coopervision_Suplari_Transactions_sample.csv
+```
 
-4. Risk & Security Indicators
-IP Address & Geolocation – Helps detect location-based fraud.
-Device Fingerprint – Identifies unique device activity.
-Previous Fraud Flag – Whether the customer or transaction was previously marked as fraudulent.
-Velocity Checks – Too many transactions in a short period.
-Unusual Amount – Higher than normal spending.
-Cross-Border Transaction – Domestic vs. international.
-MCC Code (Merchant Category Code) – Identifies high-risk merchants (e.g., gambling, cryptocurrency exchanges).
+## Output Format
 
-5. Industry-Specific Features
-E-commerce – Cart size, items purchased, discount applied.
-Banking – Loan repayment, overdraft usage, account deposits.
-Healthcare – Type of medical service, insurance coverage.
-Retail – Loyalty points earned, purchase category.
-B2B Transactions – Invoice type, payment terms.
+The script generates `account_categories.csv` with two columns:
+- `account_name`: The original account name
+- `spend_category`: The AI-assigned category (direct/indirect/unaddressable)
 
-6. Text-Based Features (NLP on Transaction Descriptions)
-Transaction Description Keywords – Extract key words from transaction narratives.
-Sentiment Analysis – Used in disputes, chargebacks, or feedback.
-Categorization via NLP – Assigning transactions to predefined categories using natural language processing.
+## Development
 
-Feature Engineering for Categorization
-Clustering Techniques – Group transactions into clusters based on similarities (e.g., K-Means, DBSCAN).
-Anomaly Detection – Isolation forests or autoencoders for identifying outliers.
-Time Series Features – Seasonality, trend, cyclic patterns.
-Graph-Based Features – Network of transactions between accounts.
+To contribute to the project:
 
-Which Features to Use?
-For Fraud Detection → Use security indicators, velocity checks, location & device data.
-For Customer Segmentation → Use behavioral features, transaction patterns, and spending habits.
-For Financial Risk Analysis → Use transaction amount, balance, and recurring nature.
+1. Install development dependencies:
+```bash
+poetry install --with dev
+```
+
+2. Format code:
+```bash
+poetry run black src/
+poetry run isort src/
+```
+
+## Security Notes
+
+- Never commit your `.env` file or expose your API key
+- The `.env` file is included in `.gitignore`
+- Always use environment variables for sensitive credentials
+
+## License
+
+[Add your license information here]
