@@ -24,4 +24,5 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-categorize = "src.anthropic_utils_dev:main" 
+categorize = "src.anthropic_utils_dev:main"
+describe-vendors = "src.vendor_descriptions:main" 
