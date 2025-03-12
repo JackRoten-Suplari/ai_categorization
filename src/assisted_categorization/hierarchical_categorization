@@ -1,0 +1,98 @@
+import openai
+import time
+
+# Set your OpenAI API key
+openai.api_key = "your-api-key-here"
+
+# Define hierarchical classification levels
+# TODO: Chagne these to match customer's needs
+classification_levels = {
+    1: ["Digital", "Facility Management", "Professional Services", "Machinery and Equipment"],
+    2: {  
+        "Digital": ["Software", "Cloud Services"],
+        "Facility Management": ["Facility Services", "Maintenance"],
+        "Professional Services": ["Consulting", "Legal"],
+        "Machinery and Equipment": ["Tools", "Heavy Equipment"]
+    },
+    3: {
+        "Software": ["SaaS", "Custom Development"],
+        "Facility Services": ["Cleaning", "Security"],
+        "Consulting": ["Strategy", "IT"],
+        "Tools": ["Hand Tools", "Power Tools"]
+    },
+    4: {
+        "SaaS": ["CRM", "ERP"],
+        "Cleaning": ["Office Cleaning", "Industrial Cleaning"],
+        "Strategy": ["Business Strategy", "Financial Strategy"],
+        "Hand Tools": ["Hammers", "Screwdrivers"]
+    }
+}
+
+# Function to classify a financial transaction
+def classify_transaction(transaction_details):
+    """
+    Classifies a financial transaction through a hierarchical structure using OpenAI's GPT model.
+    """
+    classification = {}
+
+    for level in range(1, 5):
+        prompt = generate_prompt(transaction_details, classification, level)
+        
+        # Call OpenAI API with a structured prompt
+        response = call_gpt(prompt)
+        
+        if response in classification_levels.get(level, {}):
+            classification[f"Level {level}"] = response
+        else:
+            print(f"Warning: Unexpected classification at Level {level}: {response}")
+            break  # Stop further classification if an invalid response is encountered
+
+    return classification
+
+# Function to generate a structured CoT prompt
+def generate_prompt(transaction_details, classification, level):
+    """
+    Generates a prompt that builds on previous classifications for hierarchical structure.
+    """
+    base_prompt = f"""
+    You are an AI financial transaction classifier for IKEA Supply. Given a transaction description, 
+    classify it into the correct category. Follow a hierarchical classification system with 4 levels.
+    
+    Transaction Details: {transaction_details}
+    """
+
+    # Add previous classifications to guide reasoning
+    if classification:
+        base_prompt += "\nPrevious Classifications:\n"
+        for lvl, cat in classification.items():
+            base_prompt += f"- {lvl}: {cat}\n"
+    
+    base_prompt += f"\nNow classify this transaction at Level {level}. Choose from: {classification_levels[level]}.\n"
+    return base_prompt.strip()
+
+# Function to call OpenAI API
+def call_gpt(prompt):
+    """
+    Calls the OpenAI GPT API with the given prompt.
+    """
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4-turbo",  # Use GPT-4 for best accuracy
+            messages=[{"role": "system", "content": "You are a hierarchical financial transaction classifier."},
+                      {"role": "user", "content": prompt}],
+            temperature=0.2,  # Lower temperature for better consistency
+            max_tokens=50
+        )
+        return response['choices'][0]['message']['content'].strip()
+    
+    except Exception as e:
+        print(f"Error calling OpenAI API: {e}")
+        return "Error"
+
+# Example usage
+transaction = "Payment to external IT consultant for software development services."
+classification_result = classify_transaction(transaction)
+
+print("\nFinal Classification Result:")
+for level, category in classification_result.items():
+    print(f"{level}: {category}")
