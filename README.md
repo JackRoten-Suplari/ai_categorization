@@ -4,8 +4,7 @@ This project uses Anthropic's Claude AI to automatically categorize spend accoun
 
 ## Features
 
-- Extracts unique account names from transaction data
-- Uses Anthropic's Claude AI to categorize accounts
+- Uses Anthropic's Claude AI to categorize accounts and get vendor description
 - Processes accounts in batches for efficiency
 - Includes retry logic and error handling
 - Saves results to CSV for easy analysis
